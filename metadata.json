@@ -1,6 +1,6 @@
 {
-  "name": "Aplicativo De Tarefas 2",
-  "description": "",
+  "name": "ZaptDay",
+  "description": "App de produtividade e tarefas",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
