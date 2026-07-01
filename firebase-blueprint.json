@@ -1,0 +1,74 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "User Profile",
+      "description": "User profile information",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "photoUrl": { "type": "string" },
+        "geminiApiKey": { "type": "string" },
+        "dailyReminders": { "type": "boolean" },
+        "ownerId": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["ownerId"]
+    },
+    "AppNotification": {
+      "title": "App Notification",
+      "description": "Notification for reminders",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "body": { "type": "string" },
+        "taskId": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "ownerId": { "type": "string" },
+        "read": { "type": "boolean" }
+      },
+      "required": ["ownerId"]
+    },
+    "Task": {
+      "title": "Task",
+      "description": "A task created by a user",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "startTime": { "type": "string" },
+        "duration": { "type": "number" },
+        "priority": { "type": "string" },
+        "category": { "type": "string" },
+        "date": { "type": "string" },
+        "effort": { "type": "string" },
+        "location": { "type": "string" },
+        "subtasks": { "type": "array" },
+        "style": { "type": "string" },
+        "completed": { "type": "boolean" },
+        "completedAt": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "reminderEnabled": { "type": "boolean" },
+        "reminderTime": { "type": "string" },
+        "reminderCustomMinutes": { "type": "string" },
+        "endTime": { "type": "string" },
+        "durationStr": { "type": "string" },
+        "ownerId": { "type": "string" }
+      },
+      "required": ["ownerId", "title", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "User profiles. Owned by the user denoted by userId."
+    },
+    "/notifications/{notificationId}": {
+      "schema": { "$ref": "#/entities/AppNotification" },
+      "description": "Notifications for a user."
+    },
+    "/tasks/{taskId}": {
+      "schema": { "$ref": "#/entities/Task" },
+      "description": "Tasks for a user."
+    }
+  }
+}

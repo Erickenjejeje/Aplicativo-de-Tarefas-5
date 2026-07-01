@@ -1,0 +1,114 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      // Allow unverified for testing, but in prod should check email_verified.
+      return isSignedIn();
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // UserProfile Validator
+    function isValidUserProfile(data) {
+      return data.keys().hasAll(['ownerId']) &&
+             data.keys().hasOnly(['name', 'photoUrl', 'geminiApiKey', 'dailyReminders', 'ownerId', 'updatedAt']) &&
+             data.ownerId == request.auth.uid &&
+             (data.get('name', '') is string) && (data.get('name', '').size() <= 200) &&
+             (data.get('photoUrl', '') is string) && (data.get('photoUrl', '').size() <= 1000000) &&
+             (data.get('geminiApiKey', '') is string) && (data.get('geminiApiKey', '').size() <= 1000) &&
+             (data.get('dailyReminders', false) is bool) &&
+             (data.get('updatedAt', request.time) is timestamp) && (data.get('updatedAt', request.time) == request.time);
+    }
+
+    match /users/{userId} {
+      allow get: if isVerifiedUser() && isValidId(userId) && userId == request.auth.uid;
+      allow list: if isVerifiedUser() && resource.data.ownerId == request.auth.uid;
+      allow create: if isVerifiedUser() && isValidId(userId) && userId == request.auth.uid &&
+                    isValidUserProfile(incoming());
+      allow update: if isVerifiedUser() && isValidId(userId) && userId == request.auth.uid &&
+                    isValidUserProfile(incoming()) &&
+                    incoming().ownerId == existing().ownerId;
+      allow delete: if isVerifiedUser() && isValidId(userId) && userId == request.auth.uid;
+    }
+
+    // Task Validator
+    function isValidTask(data) {
+      return data.keys().hasAll(['ownerId', 'title', 'createdAt']) &&
+             data.keys().hasOnly(['title', 'description', 'startTime', 'duration', 'priority', 'category', 'date', 'effort', 'location', 'subtasks', 'style', 'completed', 'completedAt', 'createdAt', 'reminderEnabled', 'reminderTime', 'reminderCustomMinutes', 'endTime', 'durationStr', 'ownerId']) &&
+             data.ownerId == request.auth.uid &&
+             data.title is string && data.title.size() <= 200 &&
+             (data.get('description', '') is string) && (data.get('description', '').size() <= 2000) &&
+             (data.get('startTime', '') is string) && (data.get('startTime', '').size() <= 100) &&
+             (data.get('duration', 0) is number) &&
+             (data.get('priority', '') is string) && (data.get('priority', '').size() <= 50) &&
+             (data.get('category', '') is string) && (data.get('category', '').size() <= 50) &&
+             (data.get('date', '') is string) && (data.get('date', '').size() <= 50) &&
+             (data.get('effort', '') is string) && (data.get('effort', '').size() <= 50) &&
+             (data.get('location', '') is string) && (data.get('location', '').size() <= 100) &&
+             (data.get('subtasks', []) is list) && (data.get('subtasks', []).size() <= 50) &&
+             (data.get('style', '') is string) && (data.get('style', '').size() <= 50) &&
+             (data.get('completed', false) is bool) &&
+             (data.get('completedAt', '') is string) && (data.get('completedAt', '').size() <= 100) &&
+             (data.createdAt is timestamp) &&
+             (data.get('reminderEnabled', false) is bool) &&
+             (data.get('reminderTime', '') is string) && (data.get('reminderTime', '').size() <= 100) &&
+             (data.get('reminderCustomMinutes', '') is string) && (data.get('reminderCustomMinutes', '').size() <= 100) &&
+             (data.get('endTime', '') is string) && (data.get('endTime', '').size() <= 100) &&
+             (data.get('durationStr', '') is string) && (data.get('durationStr', '').size() <= 100);
+    }
+
+    match /tasks/{taskId} {
+      allow get: if isVerifiedUser() && isValidId(taskId) && resource.data.ownerId == request.auth.uid;
+      allow list: if isVerifiedUser() && resource.data.ownerId == request.auth.uid;
+      allow create: if isVerifiedUser() && isValidId(taskId) && 
+                    isValidTask(incoming()) && incoming().createdAt == request.time;
+      allow update: if isVerifiedUser() && isValidId(taskId) && resource.data.ownerId == request.auth.uid &&
+                    isValidTask(incoming()) &&
+                    incoming().ownerId == existing().ownerId &&
+                    incoming().createdAt == existing().createdAt;
+      allow delete: if isVerifiedUser() && isValidId(taskId) && resource.data.ownerId == request.auth.uid;
+    }
+
+    // AppNotification Validator
+    function isValidNotification(data) {
+      return data.keys().hasAll(['ownerId', 'createdAt']) &&
+             data.keys().hasOnly(['title', 'body', 'taskId', 'createdAt', 'ownerId', 'read']) &&
+             data.ownerId == request.auth.uid &&
+             (data.get('title', '') is string) && (data.get('title', '').size() <= 200) &&
+             (data.get('body', '') is string) && (data.get('body', '').size() <= 500) &&
+             (data.get('taskId', '') is string) && (data.get('taskId', '').size() <= 128) &&
+             (data.createdAt is timestamp) &&
+             (data.get('read', false) is bool);
+    }
+
+    match /notifications/{notificationId} {
+      allow get: if isVerifiedUser() && isValidId(notificationId) && resource.data.ownerId == request.auth.uid;
+      allow list: if isVerifiedUser() && resource.data.ownerId == request.auth.uid;
+      allow create: if isVerifiedUser() && isValidId(notificationId) &&
+                    isValidNotification(incoming()) && incoming().createdAt == request.time;
+      allow update: if isVerifiedUser() && isValidId(notificationId) && resource.data.ownerId == request.auth.uid &&
+                    isValidNotification(incoming()) &&
+                    incoming().ownerId == existing().ownerId &&
+                    incoming().createdAt == existing().createdAt;
+      allow delete: if isVerifiedUser() && isValidId(notificationId) && resource.data.ownerId == request.auth.uid;
+    }
+  }
+}
